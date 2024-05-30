@@ -1,0 +1,39 @@
+cabal-version:      3.8
+name:               fabricater
+version:            0.11.0.0
+
+executable fabricater
+  main-is:          Main.hs
+  default-language: Haskell2010
+
+  ghc-options:
+    -Wall
+    -Wincomplete-uni-patterns
+    -Wincomplete-record-updates
+    -Werror=missing-home-modules
+    -Widentities
+    -Wredundant-constraints
+    -- -Wmissing-export-lists
+
+  default-extensions:
+    -- OverloadedStrings
+    LambdaCase
+    -- ScopedTypeVariables
+    -- DisambiguateRecordFields
+
+  other-modules:
+    Color
+    Display
+    Draw
+    Geometry
+    Lighting
+    Matrix
+    Options
+    Parser
+    Stack
+    Vector
+
+  build-depends:
+      base ^>=4.17.2.1
+    , array ^>=0.5.4.0
+    , process ^>=1.6.18.0
