@@ -1,4 +1,4 @@
-.PHONY: default run view format clean
+.PHONY: default run view test format clean
 
 default: run
 
@@ -7,6 +7,9 @@ run:
 
 view:
 	cabal run fabricater -- --script scripts/face.mdl --display $(HOME)/public_html/current.png
+
+test:
+	@cabal run -v0 fabricater -- -O -D -f scripts/face.mdl
 
 format:
 	@cabal run -v0 fabricater -- -O -D

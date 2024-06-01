@@ -18,15 +18,13 @@ data Material = Material { ka :: RGB Double
                          }
   deriving (Eq, Show)
 
-getLighting :: Material -> ((Double, Double, Double), (Double, Double, Double), (Double, Double, Double)) -> Color
-getLighting mat tri = fmap (fromInteger . round)
+getLighting :: (Ambient, [PointLight], Material) -> ((Double, Double, Double), (Double, Double, Double), (Double, Double, Double)) -> Color
+getLighting (a, (p:ps), mat) tri = fmap (fromInteger . round)
                 $ col p * ks mat * pure (max 0 $ dot (reflection norm (loc p)) (signum view)) ^ (2 :: Integer)
                 + col p * kd mat * pure (max 0 $ costheta norm (loc p))
-                + a * ka mat
+                + colA a * ka mat
   where norm = getNormal tri
         view = toVec3 (0, 0, 1)
-        a = RGB 20 20 20
-        p = PointLight (toVec3 (-0.5, 1, 1)) (RGB 241 241 241)
 
 mkAmbient :: Double -> Double -> Double -> Ambient
 mkAmbient r g b = Ambient $ RGB r g b

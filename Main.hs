@@ -12,21 +12,22 @@ import Stack (peek, pop, push, modHead)
 import Color (Color, readColor, RGB(..))
 import Display (newScreen, clearImage, save, display, asAscii, Image)
 import Draw (line, circle, hermite, cbezier, qbezier, box, sphere, torus)
-import Lighting (Material(..))
+import Lighting (Ambient(..), PointLight(..), Material(..))
+import Vector (toVec3)
 
 
 -- | run fabricater
 main :: IO ()
 main = do
   args <- parseArgs <$> getArgs
-  exprs <- parse <$> maybe getContents readFile (getScript args)
+  parsed <- parse <$> maybe getContents readFile (getScript args)
 
   when (not $ silent args) $
-    maybe putStr writeFile (getOutput args) $ unlines . map show $ snd exprs
+    maybe putStr writeFile (getOutput args) $ unlines $ (\(syms, exprs) -> map show syms ++ ["", "------", ""] ++ map show exprs) $ parsed
 
   when (willRun args) $ do
     img <- newScreen 500 500
-    uncurry (run (getDisp args) img (readColor 8 62 100) (readColor 252 252 252)) $ exprs
+    uncurry (run (getDisp args) img (readColor 8 62 100) (readColor 252 252 252)) $ parsed
 
 -- | Takes an optional filepath for `display`, an image to draw to, the background and foreground colors, and finally a list of Exprs
 run :: (Maybe FilePath) -> Image -> Color -> Color -> [Symbol] -> [Expr] -> IO ()
@@ -52,7 +53,7 @@ run dispMode i bgcol fgcol syms exprs = clearImage i bgcol >> foldM_ eval [] exp
       Rotate axis theta   -> return $ modHead xs $ rotateMatrix axis theta
       where
         render :: (Transformable a) => String -> [a] -> IO [Transformation]
-        render mat = (>> return xs) . draw i (symlookup mat syms) fgcol . map (apply (peek xs))
+        render mat = (>> return xs) . draw i (Ambient (RGB 20 20 20), [PointLight (toVec3 (-0.5, 1, 1)) (RGB 241 241 241)], symlookup mat syms) fgcol . map (apply (peek xs))
 
 symlookup :: String -> [Symbol] -> Material
 symlookup key' ls = maybe basic id $ go key' ls
