@@ -13,7 +13,7 @@ import Data.Function (on)
 import Display (draw_line, scanline, Image, Pos)
 import Color (Color)
 import Vector (isFrontFace)
-import Lighting (getLighting, Ambient, PointLight, Material)
+import Lighting (getLighting, Lights, Material)
 
 -- | Point
 type Point = (Double, Double, Double)
@@ -42,7 +42,7 @@ data Axis = X | Y | Z deriving (Eq, Read, Show)
 
 class Transformable a where
   apply :: Transformation -> a -> a
-  draw :: Image -> (Ambient, [PointLight], Material) -> Color -> [a] -> IO ()
+  draw :: Image -> Lights -> Material -> Color -> [a] -> IO ()
 
 -- | Turns two Points into an Edge
 mkEdge :: Point -> Point -> Edge
@@ -114,7 +114,7 @@ rotateMatrix axis theta = case axis of
 -- | Draws an EdgeList to the screen
 instance Transformable Edge where
   apply = matrixMult
-  draw img _ col = mapM_ ( uncurry (draw_line img col)
+  draw img _ _ col = mapM_ ( uncurry (draw_line img col)
                        . (toPos *** toPos)
                        . unEdge
                        )
@@ -122,10 +122,10 @@ instance Transformable Edge where
 -- | Draws a TriList to the screen
 instance Transformable Triangle where
   apply = matrixMult
-  draw img vars _ = mapM_ ( (\tri -> when (isFrontFace tri) (drawTri tri))
+  draw img lighting mat _ = mapM_ ( (\tri -> when (isFrontFace tri) (drawTri tri))
                        . unTri
                        )
-    where drawTri tri = fillTri img (getLighting vars tri) tri
+    where drawTri tri = fillTri img (getLighting lighting mat tri) tri
                                 -- >> draw' (toPos p0) (toPos p1)
                                 -- >> draw' (toPos p1) (toPos p2)
                                 -- >> draw' (toPos p2) (toPos p0)

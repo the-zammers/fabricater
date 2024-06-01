@@ -4,6 +4,7 @@ module Main where
 
 import Control.Monad (foldM_, when)
 import System.Environment (getArgs)
+import Data.Maybe (fromMaybe, listToMaybe)
 
 import Options (parseArgs, Options(..))
 import Parser (parse, Expr(..), Symbol(..))
@@ -12,8 +13,7 @@ import Stack (peek, pop, push, modHead)
 import Color (Color, readColor, RGB(..))
 import Display (newScreen, clearImage, save, display, asAscii, Image)
 import Draw (line, circle, hermite, cbezier, qbezier, box, sphere, torus)
-import Lighting (Ambient(..), PointLight(..), Material(..))
-import Vector (toVec3)
+import Lighting (Ambient(..), Material(..), Lights)
 
 
 -- | run fabricater
@@ -33,6 +33,7 @@ main = do
 run :: (Maybe FilePath) -> Image -> Color -> Color -> [Symbol] -> [Expr] -> IO ()
 run dispMode i bgcol fgcol syms exprs = clearImage i bgcol >> foldM_ eval [] exprs
   where
+    lights = getLights syms
     eval :: [Transformation] -> Expr -> IO [Transformation]
     eval xs = \case
       Line p0 p1          -> render "" $ line p0 p1 
@@ -53,13 +54,17 @@ run dispMode i bgcol fgcol syms exprs = clearImage i bgcol >> foldM_ eval [] exp
       Rotate axis theta   -> return $ modHead xs $ rotateMatrix axis theta
       where
         render :: (Transformable a) => String -> [a] -> IO [Transformation]
-        render mat = (>> return xs) . draw i (Ambient (RGB 20 20 20), [PointLight (toVec3 (-0.5, 1, 1)) (RGB 241 241 241)], symlookup mat syms) fgcol . map (apply (peek xs))
+        render mat = (>> return xs) . draw i lights (matlookup mat syms) fgcol . map (apply (peek xs))
 
-symlookup :: String -> [Symbol] -> Material
-symlookup key' ls = maybe basic id $ go key' ls
-  where go _key [] =  Nothing
-        go  key (MaterialVar x y:xys)
-          | key == x  =  Just y
-          | otherwise =  go key xys
-        go key (_:xys) = go key xys
-        basic = Material (RGB 0.2 0.2 0.2) (RGB 0.9 0.6 0.6) (RGB 0.2 0.4 0.4)
+headDef :: a -> [a] -> a
+headDef def = fromMaybe def . listToMaybe
+
+getLights :: [Symbol] -> Lights
+getLights syms = (ambient, points)
+  where ambient = headDef basic [x | AmbientVar x <- syms]
+        points = [x | LightVar x <- syms]
+        basic = Ambient (RGB 0 0 0)
+
+matlookup :: String -> [Symbol] -> Material
+matlookup key ls = headDef basic [x | MaterialVar key' x <- ls, key == key']
+  where basic = Material (RGB 0.2 0.2 0.2) (RGB 0.2 0.2 0.2) (RGB 0.2 0.2 0.2)

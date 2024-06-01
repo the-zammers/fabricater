@@ -3,6 +3,8 @@ module Lighting where
 import Color
 import Vector
 
+type Lights = (Ambient, [PointLight])
+
 data Ambient = Ambient { colA :: RGB Double }
   deriving (Eq, Show)
 
@@ -18,11 +20,13 @@ data Material = Material { ka :: RGB Double
                          }
   deriving (Eq, Show)
 
-getLighting :: (Ambient, [PointLight], Material) -> ((Double, Double, Double), (Double, Double, Double), (Double, Double, Double)) -> Color
-getLighting (a, (p:ps), mat) tri = fmap (fromInteger . round)
-                $ col p * ks mat * pure (max 0 $ dot (reflection norm (loc p)) (signum view)) ^ (2 :: Integer)
-                + col p * kd mat * pure (max 0 $ costheta norm (loc p))
-                + colA a * ka mat
+getLighting :: Lights -> Material -> ((Double, Double, Double), (Double, Double, Double), (Double, Double, Double)) -> Color
+getLighting (a, ps) mat tri = fmap (fromInteger . round)
+  $ sum (map (
+    \p -> col p * ks mat * pure (max 0 $ dot (reflection norm (loc p)) (signum view)) ^ (2 :: Integer)
+        + col p * kd mat * pure (max 0 $ costheta norm (loc p))
+    ) ps)
+  + colA a * ka mat
   where norm = getNormal tri
         view = toVec3 (0, 0, 1)
 
