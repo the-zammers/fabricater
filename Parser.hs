@@ -14,7 +14,7 @@ import Data.Char (toUpper)
 import Data.List (unfoldr)
 
 import Geometry (Axis(..), Point)
-import Lighting (Material, mkMaterial)
+import Lighting (Material, mkMaterial, Ambient, mkAmbient, PointLight, mkPointLight)
 
 -- | All valid tokens
 data Token
@@ -35,6 +35,8 @@ data Token
   | SaveT
   | ClearT
   | ConstT
+  | AmbientT
+  | LightT
   | NumLit Double
   | StrLit String
   deriving (Eq, Show)
@@ -59,7 +61,11 @@ data Expr
   | Clear
   deriving (Eq, Show)
 
-data Symbol = Symbol String Material
+data Symbol
+  = MaterialVar String Material
+  | KnobVar String
+  | AmbientVar Ambient
+  | LightVar PointLight
   deriving (Eq, Show)
 
 -- | Convert from an input String to a list of Exprs
@@ -91,6 +97,8 @@ token = \case
   "save"    -> SaveT
   "clear"   -> ClearT
   "constants" -> ConstT
+  "ambient" -> AmbientT
+  "light"   -> LightT
   t         -> maybe (StrLit t) NumLit $ readMaybe t
 
 -- | Convert from a list of tokens to a list of exprs
@@ -163,7 +171,12 @@ expr = \case
            : NumLit a : NumLit b : NumLit c
            : NumLit d : NumLit e : NumLit f
            : NumLit g : NumLit h : NumLit i : rest
-    -> Just (Left $ Symbol z (mkMaterial a b c d e f g h i), rest)
+    -> Just (Left $ MaterialVar z (mkMaterial a b c d e f g h i), rest)
+  AmbientT : NumLit a : NumLit b : NumLit c : rest
+    -> Just (Left $ AmbientVar (mkAmbient a b c), rest)
+  LightT   : NumLit a : NumLit b : NumLit c
+           : NumLit d : NumLit e : NumLit f : rest
+    -> Just (Left $ LightVar (mkPointLight a b c d e f), rest)
   []
     -> Nothing
   x -> error $ "Parsing error at " ++ show (take 5 x)

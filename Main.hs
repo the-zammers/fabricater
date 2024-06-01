@@ -57,7 +57,8 @@ run dispMode i bgcol fgcol syms exprs = clearImage i bgcol >> foldM_ eval [] exp
 symlookup :: String -> [Symbol] -> Material
 symlookup key' ls = maybe basic id $ go key' ls
   where go _key [] =  Nothing
-        go  key (Symbol x y:xys)
+        go  key (MaterialVar x y:xys)
           | key == x  =  Just y
           | otherwise =  go key xys
+        go key (_:xys) = go key xys
         basic = Material (RGB 0.2 0.2 0.2) (RGB 0.9 0.6 0.6) (RGB 0.2 0.4 0.4)

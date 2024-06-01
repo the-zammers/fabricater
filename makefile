@@ -6,7 +6,7 @@ run:
 	cabal run fabricater -- --script scripts/face.mdl
 
 view:
-	cabal run fabricater -- --script scripts/jinkougaku.mdl --display $(HOME)/public_html/current.png
+	cabal run fabricater -- --script scripts/face.mdl --display $(HOME)/public_html/current.png
 
 format:
 	@cabal run -v0 fabricater -- -O -D

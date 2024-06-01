@@ -1,6 +1,6 @@
 module Vector where
 
-data Vec3 a = Vec3 a a a deriving (Eq)
+data Vec3 a = Vec3 a a a deriving (Eq, Show)
 
 toVec3 :: (a,a,a) -> Vec3 a
 toVec3 (x,y,z) = Vec3 x y z

@@ -3,9 +3,13 @@ module Lighting where
 import Color
 import Vector
 
+data Ambient = Ambient { colA :: RGB Double }
+  deriving (Eq, Show)
+
 data PointLight = PointLight { loc :: Vec3 Double
                              , col :: RGB Double
                              }
+  deriving (Eq, Show)
 
 
 data Material = Material { ka :: RGB Double
@@ -21,8 +25,14 @@ getLighting mat tri = fmap (fromInteger . round)
                 + a * ka mat
   where norm = getNormal tri
         view = toVec3 (0, 0, 1)
-        a = RGB 100 120 150
+        a = RGB 20 20 20
         p = PointLight (toVec3 (-0.5, 1, 1)) (RGB 241 241 241)
+
+mkAmbient :: Double -> Double -> Double -> Ambient
+mkAmbient r g b = Ambient $ RGB r g b
+
+mkPointLight :: Double -> Double -> Double -> Double -> Double -> Double -> PointLight
+mkPointLight r g b x y z = PointLight (Vec3 x y z) (RGB r g b)
 
 mkMaterial :: Double -> Double -> Double -> Double -> Double -> Double -> Double -> Double -> Double -> Material
 mkMaterial kar kdr ksr kag kdg ksg kab kdb ksb = Material (RGB kar kag kab) (RGB kdr kdg kdb) (RGB ksr ksg ksb)
