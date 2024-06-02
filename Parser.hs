@@ -14,7 +14,9 @@ import Data.Char (toUpper)
 import Data.List (unfoldr)
 
 import Geometry (Axis(..), Point)
-import Lighting (Material, mkMaterial, Ambient, mkAmbient, PointLight, mkPointLight)
+import Color (RGB(..))
+import Vector (Vec3(..))
+import Lighting (Material(..), Ambient(..), PointLight(..))
 
 -- | All valid tokens
 data Token
@@ -80,30 +82,30 @@ lex = map token . concatMap (words . takeWhile (/='/')) . lines
 -- | Convert from a word in a String to a Token
 token :: String -> Token
 token = \case
-  "line"    -> LineT
-  "circle"  -> CircleT
-  "hermite" -> HermiteT
-  "bezier"  -> CBezierT
-  "qbezier" -> QBezierT
-  "box"     -> BoxT
-  "sphere"  -> SphereT
-  "torus"   -> TorusT
-  "push"    -> PushT
-  "pop"     -> PopT
-  "scale"   -> ScaleT
-  "move"    -> MoveT
-  "rotate"  -> RotateT
-  "display" -> DisplayT
-  "save"    -> SaveT
-  "clear"   -> ClearT
+  "line"      -> LineT
+  "circle"    -> CircleT
+  "hermite"   -> HermiteT
+  "bezier"    -> CBezierT
+  "qbezier"   -> QBezierT
+  "box"       -> BoxT
+  "sphere"    -> SphereT
+  "torus"     -> TorusT
+  "push"      -> PushT
+  "pop"       -> PopT
+  "scale"     -> ScaleT
+  "move"      -> MoveT
+  "rotate"    -> RotateT
+  "display"   -> DisplayT
+  "save"      -> SaveT
+  "clear"     -> ClearT
   "constants" -> ConstT
-  "ambient" -> AmbientT
-  "light"   -> LightT
-  t         -> maybe (StrLit t) NumLit $ readMaybe t
+  "ambient"   -> AmbientT
+  "light"     -> LightT
+  t           -> maybe (StrLit t) NumLit $ readMaybe t
 
--- | Convert from a list of tokens to a list of exprs
+-- | Convert from a list of tokens to a list of exprs and a symbol table
 yacc :: [Token] -> ([Symbol], [Expr])
-yacc toks = partitionEithers $ unfoldr expr toks
+yacc = partitionEithers . unfoldr expr
 
 -- | yacc helper
 expr :: [Token] -> Maybe (Either Symbol Expr, [Token])
@@ -168,15 +170,15 @@ expr = \case
   ClearT   : rest
     -> Just (Right $ Clear, rest)
   ConstT   : StrLit z
-           : NumLit a : NumLit b : NumLit c
-           : NumLit d : NumLit e : NumLit f
-           : NumLit g : NumLit h : NumLit i : rest
-    -> Just (Left $ MaterialVar z (mkMaterial a b c d e f g h i), rest)
+           : NumLit kar : NumLit kdr : NumLit ksr
+           : NumLit kag : NumLit kdg : NumLit ksg
+           : NumLit kab : NumLit kdb : NumLit ksb : rest
+    -> Just (Left $ MaterialVar z (Material (RGB kar kag kab) (RGB kdr kdg kdb) (RGB ksr ksg ksb)), rest)
   AmbientT : NumLit a : NumLit b : NumLit c : rest
-    -> Just (Left $ AmbientVar (mkAmbient a b c), rest)
-  LightT   : NumLit a : NumLit b : NumLit c
-           : NumLit d : NumLit e : NumLit f : rest
-    -> Just (Left $ LightVar (mkPointLight a b c d e f), rest)
+    -> Just (Left $ AmbientVar (Ambient (RGB a b c)), rest)
+  LightT   : NumLit r : NumLit g : NumLit b
+           : NumLit x : NumLit y : NumLit z : rest
+    -> Just (Left $ LightVar (PointLight (Vec3 x y z) (RGB r g b)), rest)
   []
     -> Nothing
   x -> error $ "Parsing error at " ++ show (take 5 x)
