@@ -3,13 +3,13 @@
 default: run
 
 run:
-	cabal run fabricater -- --script scripts/face.mdl
+	cabal run fabricater -- --script scripts/knobs.txt
 
 view:
 	cabal run fabricater -- --script scripts/face.mdl --display $(HOME)/public_html/current.png
 
 test:
-	@cabal run -v0 fabricater -- -O -D -f scripts/face.mdl
+	@cabal run -v0 fabricater -- -O -D -f scripts/knobs.txt
 
 format:
 	@cabal run -v0 fabricater -- -O -D

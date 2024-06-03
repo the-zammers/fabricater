@@ -23,7 +23,7 @@ main = do
   parsed <- parse <$> maybe getContents readFile (getScript args)
 
   when (not $ silent args) $
-    maybe putStr writeFile (getOutput args) $ unlines $ (\(syms, exprs) -> map show syms ++ ["", "------", ""] ++ map show exprs) $ parsed
+    maybe putStr writeFile (getOutput args) $ (\(syms, exprs) -> unlines $ map show syms ++ ["", "------", ""] ++ map show exprs) $ parsed
 
   when (willRun args) $ do
     img <- newScreen 500 500
@@ -49,9 +49,9 @@ run dispMode i bgcol fgcol syms exprs = clearImage i bgcol >> foldM_ eval [] exp
       Clear               -> clearImage i bgcol >> return xs
       Push                -> return $ push xs
       Pop                 -> return $ pop xs
-      Scale sx sy sz      -> return $ modHead xs $ scaleMatrix sx sy sz
-      Move  tx ty tz      -> return $ modHead xs $ moveMatrix tx ty tz
-      Rotate axis theta   -> return $ modHead xs $ rotateMatrix axis theta
+      Scale k sx sy sz      -> return $ modHead xs $ scaleMatrix sx sy sz
+      Move  k tx ty tz      -> return $ modHead xs $ moveMatrix tx ty tz
+      Rotate k axis theta   -> return $ modHead xs $ rotateMatrix axis theta
       where
         render :: (Transformable a) => String -> [a] -> IO [Transformation]
         render mat = (>> return xs) . draw i lights (matlookup mat syms) fgcol . map (apply (peek xs))

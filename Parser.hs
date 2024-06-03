@@ -39,6 +39,9 @@ data Token
   | ConstT
   | AmbientT
   | LightT
+  | FramesT
+  | BasenameT
+  | VaryT
   | NumLit Double
   | StrLit String
   deriving (Eq, Show)
@@ -55,9 +58,9 @@ data Expr
   | Torus String Point Double Double
   | Push
   | Pop
-  | Scale Double Double Double
-  | Move Double Double Double
-  | Rotate Axis Double
+  | Scale String Double Double Double
+  | Move String Double Double Double
+  | Rotate String Axis Double
   | Display
   | Save String
   | Clear
@@ -65,9 +68,11 @@ data Expr
 
 data Symbol
   = MaterialVar String Material
-  | KnobVar String
+  | KnobVar String Integer Integer Double Double
   | AmbientVar Ambient
   | LightVar PointLight
+  | FramesVar Integer
+  | BasenameVar String
   deriving (Eq, Show)
 
 -- | Convert from an input String to a list of Exprs
@@ -101,6 +106,9 @@ token = \case
   "constants" -> ConstT
   "ambient"   -> AmbientT
   "light"     -> LightT
+  "frames"    -> FramesT
+  "basename"  -> BasenameT
+  "vary"      -> VaryT
   t           -> maybe (StrLit t) NumLit $ readMaybe t
 
 -- | Convert from a list of tokens to a list of exprs and a symbol table
@@ -156,13 +164,13 @@ expr = \case
   PopT     : rest
     -> Just (Right $ Pop, rest)
   ScaleT   : NumLit a : NumLit b : NumLit c : rest
-    -> Just (Right $ Scale a b c, rest)
+    -> Just (Right $ Scale "" a b c, rest)
   MoveT    : NumLit a : NumLit b : NumLit c : rest
-    -> Just (Right $ Move a b c, rest)
+    -> Just (Right $ Move "" a b c, rest)
   RotateT  : StrLit a
            : NumLit b : rest
            | isJust $ (readMaybe (map toUpper a) :: Maybe Axis)
-    -> Just (Right $ Rotate (read (map toUpper a)) b, rest)
+    -> Just (Right $ Rotate "" (read (map toUpper a)) b, rest)
   DisplayT : rest
     -> Just (Right $ Display, rest)
   SaveT    : StrLit a : rest
@@ -179,6 +187,16 @@ expr = \case
   LightT   : NumLit r : NumLit g : NumLit b
            : NumLit x : NumLit y : NumLit z : rest
     -> Just (Left $ LightVar (PointLight (Vec3 x y z) (RGB r g b)), rest)
+  FramesT  : NumLit a : rest
+           | a == fromInteger (round a)
+    -> Just (Left $ FramesVar (round a), rest)
+  BasenameT : StrLit a : rest
+    -> Just (Left $ BasenameVar a, rest)
+  VaryT    : StrLit a
+           : NumLit sFrame : NumLit eFrame
+           : NumLit sValue : NumLit eValue : rest
+           | sFrame == fromInteger (round sFrame) && eFrame == fromInteger (round eFrame)
+    -> Just (Left $ KnobVar a (round sFrame) (round eFrame) sValue eValue, rest)
   []
     -> Nothing
   x -> error $ "Parsing error at " ++ show (take 5 x)
