@@ -6,7 +6,8 @@ constants gold 0.3 0.9 0.9 0.4 0.8 0.8 0.2 0.2 0.1
 
 frames 10
 basename knobtest
-vary knobby 0 10 0 1
-scale 1 1 1 //knobby
+vary knobby 0 4 0 1
+vary knobby 5 10 1 0
+scale 1 1 1 knobby
 torus gold 0 0 0 10 20
 display

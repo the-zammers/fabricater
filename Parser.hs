@@ -53,14 +53,14 @@ data Expr
   | Hermite Point Point Point Point
   | CBezier Point Point Point Point
   | QBezier Point Point Point
-  | Box String Point Double Double Double
-  | Sphere String Point Double
-  | Torus String Point Double Double
+  | Box (Maybe String) Point Double Double Double
+  | Sphere (Maybe String) Point Double
+  | Torus (Maybe String) Point Double Double
   | Push
   | Pop
-  | Scale String Double Double Double
-  | Move String Double Double Double
-  | Rotate String Axis Double
+  | Scale (Maybe String) Double Double Double
+  | Move (Maybe String) Double Double Double
+  | Rotate (Maybe String) Axis Double
   | Display
   | Save String
   | Clear
@@ -68,11 +68,14 @@ data Expr
 
 data Symbol
   = MaterialVar String Material
-  | KnobVar String Integer Integer Double Double
+  | KnobVar String Knob
   | AmbientVar Ambient
   | LightVar PointLight
   | FramesVar Integer
   | BasenameVar String
+  deriving (Eq, Show)
+
+data Knob = Knob Integer Integer Double Double
   deriving (Eq, Show)
 
 -- | Convert from an input String to a list of Exprs
@@ -140,37 +143,48 @@ expr = \case
     -> Just (Right $ QBezier (a,b,0) (c,d,0) (e,f,0), rest)
   BoxT     : NumLit a : NumLit b : NumLit c
            : NumLit d : NumLit e : NumLit f : rest
-    -> Just (Right $ Box "" (a,b,c) d e f, rest)
+    -> Just (Right $ Box Nothing (a,b,c) d e f, rest)
   BoxT     : StrLit z
            : NumLit a : NumLit b : NumLit c
            : NumLit d : NumLit e : NumLit f : rest
-    -> Just (Right $ Box z (a,b,c) d e f, rest)
+    -> Just (Right $ Box (Just z) (a,b,c) d e f, rest)
   SphereT  : NumLit a : NumLit b : NumLit c
            : NumLit d : rest
-    -> Just (Right $ Sphere "" (a,b,c) d, rest)
+    -> Just (Right $ Sphere Nothing (a,b,c) d, rest)
   SphereT  : StrLit z
            : NumLit a : NumLit b : NumLit c
            : NumLit d : rest
-    -> Just (Right $ Sphere z (a,b,c) d, rest)
+    -> Just (Right $ Sphere (Just z) (a,b,c) d, rest)
   TorusT   : NumLit a : NumLit b : NumLit c
            : NumLit d : NumLit e : rest
-    -> Just (Right $ Torus "" (a,b,c) d e, rest)
+    -> Just (Right $ Torus Nothing (a,b,c) d e, rest)
   TorusT   : StrLit z
            : NumLit a : NumLit b : NumLit c
            : NumLit d : NumLit e : rest
-    -> Just (Right $ Torus z (a,b,c) d e, rest)
+    -> Just (Right $ Torus (Just z) (a,b,c) d e, rest)
   PushT    : rest
     -> Just (Right $ Push, rest)
   PopT     : rest
     -> Just (Right $ Pop, rest)
+  ScaleT   : NumLit a : NumLit b : NumLit c
+           : StrLit z : rest
+    -> Just (Right $ Scale (Just z) a b c, rest)
   ScaleT   : NumLit a : NumLit b : NumLit c : rest
-    -> Just (Right $ Scale "" a b c, rest)
+    -> Just (Right $ Scale Nothing a b c, rest)
+  MoveT    : NumLit a : NumLit b : NumLit c
+           : StrLit z : rest
+    -> Just (Right $ Move (Just z) a b c, rest)
   MoveT    : NumLit a : NumLit b : NumLit c : rest
-    -> Just (Right $ Move "" a b c, rest)
+    -> Just (Right $ Move Nothing a b c, rest)
+  RotateT  : StrLit a
+           : NumLit b
+           : StrLit z : rest
+           | isJust $ (readMaybe (map toUpper a) :: Maybe Axis)
+    -> Just (Right $ Rotate (Just z) (read (map toUpper a)) b, rest)
   RotateT  : StrLit a
            : NumLit b : rest
            | isJust $ (readMaybe (map toUpper a) :: Maybe Axis)
-    -> Just (Right $ Rotate "" (read (map toUpper a)) b, rest)
+    -> Just (Right $ Rotate Nothing (read (map toUpper a)) b, rest)
   DisplayT : rest
     -> Just (Right $ Display, rest)
   SaveT    : StrLit a : rest
@@ -196,7 +210,7 @@ expr = \case
            : NumLit sFrame : NumLit eFrame
            : NumLit sValue : NumLit eValue : rest
            | sFrame == fromInteger (round sFrame) && eFrame == fromInteger (round eFrame)
-    -> Just (Left $ KnobVar a (round sFrame) (round eFrame) sValue eValue, rest)
+    -> Just (Left $ KnobVar a (Knob (round sFrame) (round eFrame) sValue eValue), rest)
   []
     -> Nothing
   x -> error $ "Parsing error at " ++ show (take 5 x)

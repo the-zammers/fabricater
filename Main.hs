@@ -5,9 +5,10 @@ module Main where
 import Control.Monad (foldM_, when)
 import System.Environment (getArgs)
 import Data.Maybe (fromMaybe, listToMaybe)
+import Data.Either (partitionEithers)
 
 import Options (parseArgs, Options(..))
-import Parser (parse, Expr(..), Symbol(..))
+import Parser (parse, Expr(..), Symbol(..), Knob(..))
 import Geometry (Transformation, scaleMatrix, moveMatrix, rotateMatrix, Transformable(..))
 import Stack (peek, pop, push, modHead)
 import Color (Color, readColor, RGB(..))
@@ -20,41 +21,43 @@ import Lighting (Ambient(..), Material(..), Lights)
 main :: IO ()
 main = do
   args <- parseArgs <$> getArgs
-  parsed <- parse <$> maybe getContents readFile (getScript args)
+  (syms, exprs) <- parse <$> maybe getContents readFile (getScript args)
+  let frames = getFrames syms
 
   when (not $ silent args) $
-    maybe putStr writeFile (getOutput args) $ (\(syms, exprs) -> unlines $ map show syms ++ ["", "------", ""] ++ map show exprs) $ parsed
+    maybe putStr writeFile (getOutput args) $ unlines $ ["Frames: " ++ show frames, "------"] ++ map show syms ++ ["", "------", ""] ++ map show exprs
 
   when (willRun args) $ do
     img <- newScreen 500 500
-    uncurry (run (getDisp args) img (readColor 8 62 100) (readColor 252 252 252)) $ parsed
+    mapM_ (run (getDisp args) img (readColor 8 62 100) (readColor 252 252 252) (frames==0) syms exprs) [0 .. frames - 1]
 
 -- | Takes an optional filepath for `display`, an image to draw to, the background and foreground colors, and finally a list of Exprs
-run :: (Maybe FilePath) -> Image -> Color -> Color -> [Symbol] -> [Expr] -> IO ()
-run dispMode i bgcol fgcol syms exprs = clearImage i bgcol >> foldM_ eval [] exprs
+run :: (Maybe FilePath) -> Image -> Color -> Color -> Bool -> [Symbol] -> [Expr] -> Integer -> IO ()
+run dispMode i bgcol fgcol still syms exprs frame = clearImage i bgcol >> foldM_ eval [] exprs >> when (not still) (save asAscii ("img/img_" ++ show frame) i)
   where
     lights = getLights syms
     eval :: [Transformation] -> Expr -> IO [Transformation]
     eval xs = \case
-      Line p0 p1          -> render "" $ line p0 p1 
-      Circle p r          -> render "" $ circle p r 
-      Hermite p0 p1 r0 r1 -> render "" $ hermite p0 p1 r0 r1 
-      CBezier p0 p1 p2 p3 -> render "" $ cbezier p0 p1 p2 p3 
-      QBezier p0 p1 p2    -> render "" $ qbezier p0 p1 p2 
+      Line p0 p1          -> render Nothing $ line p0 p1 
+      Circle p r          -> render Nothing $ circle p r 
+      Hermite p0 p1 r0 r1 -> render Nothing $ hermite p0 p1 r0 r1 
+      CBezier p0 p1 p2 p3 -> render Nothing $ cbezier p0 p1 p2 p3 
+      QBezier p0 p1 p2    -> render Nothing $ qbezier p0 p1 p2 
       Box    m p w h d    -> render m $ box p w h d 
       Sphere m c r        -> render m $ sphere c r 
       Torus  m c r1 r2    -> render m $ torus c r1 r2
-      Display             -> maybe display (save asAscii) dispMode i >> return xs
-      Save fname          -> save asAscii fname i >> return xs
+      Display             -> when still (maybe display (save asAscii) dispMode i) >> return xs
+      Save fname          -> when still (save asAscii fname i) >> return xs
       Clear               -> clearImage i bgcol >> return xs
       Push                -> return $ push xs
       Pop                 -> return $ pop xs
-      Scale k sx sy sz      -> return $ modHead xs $ scaleMatrix sx sy sz
-      Move  k tx ty tz      -> return $ modHead xs $ moveMatrix tx ty tz
-      Rotate k axis theta   -> return $ modHead xs $ rotateMatrix axis theta
+      Scale k sx sy sz      -> return $ modHead xs $ scaleMatrix (knob' k sx) (knob' k sy) (knob' k sz)
+      Move  k tx ty tz      -> return $ modHead xs $ moveMatrix (knob' k tx) (knob' k ty) (knob' k tz)
+      Rotate k axis theta   -> return $ modHead xs $ rotateMatrix axis (knob' k theta)
       where
-        render :: (Transformable a) => String -> [a] -> IO [Transformation]
-        render mat = (>> return xs) . draw i lights (matlookup mat syms) fgcol . map (apply (peek xs))
+        render :: (Transformable a) => Maybe String -> [a] -> IO [Transformation]
+        render mat = (>> return xs) . draw i lights (matlookup syms mat) fgcol . map (apply (peek xs))
+        knob' key x = knob syms frame key x
 
 headDef :: a -> [a] -> a
 headDef def = fromMaybe def . listToMaybe
@@ -65,6 +68,23 @@ getLights syms = (ambient, points)
         points = [x | LightVar x <- syms]
         basic = Ambient (RGB 0 0 0)
 
-matlookup :: String -> [Symbol] -> Material
-matlookup key ls = headDef basic [x | MaterialVar key' x <- ls, key == key']
+matlookup :: [Symbol] -> Maybe String -> Material
+matlookup ls = maybe basic $ \key -> headDef basic [x | MaterialVar key' x <- ls, key == key']
   where basic = Material (RGB 0.2 0.2 0.2) (RGB 0.2 0.2 0.2) (RGB 0.2 0.2 0.2)
+
+knob :: [Symbol] -> Integer -> Maybe String -> Double -> Double
+knob _ _ Nothing total = total
+knob syms frame (Just key) total = myFirst $ map (($ frame) . parseKnob) defs
+-- need to extract first right, otherwise first left
+  where
+    defs = [x | KnobVar key' x <- syms, key == key']
+    myFirst ls = headDef total $ uncurry (flip (++)) $ partitionEithers ls
+
+parseKnob :: Knob -> (Integer -> Either Double Double)
+parseKnob (Knob sFrame eFrame sValue eValue) n
+  | n < sFrame = Left sValue
+  | n > eFrame = Left eValue
+  | otherwise  = Right $ sValue + (fromInteger $ n - sFrame) * (eValue - sValue) / (fromInteger $ eFrame - sFrame)
+
+getFrames :: [Symbol] -> Integer
+getFrames syms = headDef 0 [x | FramesVar x <- syms]
