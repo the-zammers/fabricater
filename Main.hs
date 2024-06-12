@@ -4,7 +4,8 @@ module Main where
 
 import Control.Monad (foldM_, when)
 import System.Environment (getArgs)
-import Data.Maybe (fromMaybe, listToMaybe)
+import System.IO (hPutStrLn, stderr)
+import Data.Maybe (fromMaybe, listToMaybe, isNothing)
 import Data.Either (partitionEithers)
 
 import Options (parseArgs, Options(..))
@@ -21,19 +22,22 @@ import Lighting (Ambient(..), Material(..), Lights)
 main :: IO ()
 main = do
   args <- parseArgs <$> getArgs
-  (syms, exprs) <- parse <$> maybe getContents readFile (getScript args)
-  let frames = getFrames syms
+  (frames, basename, syms, exprs) <- parse <$> maybe getContents readFile (getScript args)
+  when (frames/=1 && isNothing basename) $ hPutStrLn stderr "Warning: defaulting basename to 'img'."
 
   when (not $ silent args) $
-    maybe putStr writeFile (getOutput args) $ unlines $ ["Frames: " ++ show frames, "------"] ++ map show syms ++ ["", "------", ""] ++ map show exprs
+    maybe putStr writeFile (getOutput args) $ unlines $ ["Frames: " ++ show frames, "Basename: " ++ maybe "N/A" id basename, "------"] ++ map show syms ++ ["", "------", ""] ++ map show exprs
 
   when (willRun args) $ do
     img <- newScreen 500 500
-    mapM_ (run (getDisp args) img (readColor 8 62 100) (readColor 252 252 252) (frames==0) syms exprs) [0 .. frames - 1]
+    mapM_ (run (getDisp args) img (readColor 8 62 100) (readColor 252 252 252) (frames==1) basename syms exprs) [0 .. frames - 1]
 
 -- | Takes an optional filepath for `display`, an image to draw to, the background and foreground colors, and finally a list of Exprs
-run :: (Maybe FilePath) -> Image -> Color -> Color -> Bool -> [Symbol] -> [Expr] -> Integer -> IO ()
-run dispMode i bgcol fgcol still syms exprs frame = clearImage i bgcol >> foldM_ eval [] exprs >> when (not still) (save asAscii ("img/img_" ++ show frame) i)
+run :: Maybe FilePath -> Image -> Color -> Color -> Bool -> Maybe String -> [Symbol] -> [Expr] -> Integer -> IO ()
+run dispMode i bgcol fgcol still basename syms exprs frame = do
+  clearImage i bgcol
+  foldM_ eval [] exprs
+  when (not still) $ save asAscii ("img/" ++ maybe "img" id basename ++ "_" ++ take (3 - length (show frame)) (repeat '0') ++ show frame) i
   where
     lights = getLights syms
     eval :: [Transformation] -> Expr -> IO [Transformation]
@@ -85,6 +89,3 @@ parseKnob (Knob sFrame eFrame sValue eValue) n
   | n < sFrame = Left sValue
   | n > eFrame = Left eValue
   | otherwise  = Right $ sValue + (fromInteger $ n - sFrame) * (eValue - sValue) / (fromInteger $ eFrame - sFrame)
-
-getFrames :: [Symbol] -> Integer
-getFrames syms = headDef 0 [x | FramesVar x <- syms]

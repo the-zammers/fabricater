@@ -8,8 +8,7 @@ module Parser where
 
 import Prelude hiding (lex)
 import Text.Read (readMaybe)
-import Data.Maybe (isJust)
-import Data.Either (partitionEithers)
+import Data.Maybe (isJust, listToMaybe)
 import Data.Char (toUpper)
 import Data.List (unfoldr)
 
@@ -17,6 +16,12 @@ import Geometry (Axis(..), Point)
 import Color (RGB(..))
 import Vector (Vec3(..))
 import Lighting (Material(..), Ambient(..), PointLight(..))
+
+data Option
+  = FramesOption Frames
+  | BasenameOption Basename
+  | SymbolOption Symbol
+  | ExprOption Expr
 
 -- | All valid tokens
 data Token
@@ -46,6 +51,16 @@ data Token
   | StrLit String
   deriving (Eq, Show)
 
+type Frames = Integer
+type Basename = String
+
+data Symbol
+  = MaterialVar String Material
+  | KnobVar String Knob
+  | AmbientVar Ambient
+  | LightVar PointLight
+  deriving (Eq, Show)
+
 -- | All valid expressions
 data Expr
   = Line Point Point
@@ -66,21 +81,18 @@ data Expr
   | Clear
   deriving (Eq, Show)
 
-data Symbol
-  = MaterialVar String Material
-  | KnobVar String Knob
-  | AmbientVar Ambient
-  | LightVar PointLight
-  | FramesVar Integer
-  | BasenameVar String
-  deriving (Eq, Show)
-
 data Knob = Knob Integer Integer Double Double
   deriving (Eq, Show)
 
 -- | Convert from an input String to a list of Exprs
-parse :: String -> ([Symbol], [Expr])
-parse = yacc . lex
+parse :: String -> (Frames, Maybe Basename, [Symbol], [Expr])
+parse = clean . yacc . lex
+
+-- WRONG: DOES NOT CATCH VARY WITHOUT A FRAMES
+clean :: ([Frames], [Basename], [Symbol], [Expr]) -> (Frames, Maybe Basename, [Symbol], [Expr])
+clean ((_:_:_), _, _, _) = error "Multiple 'frames' declarations: no parse."
+clean (_, (_:_:_), _, _) = error "Multiple 'basename' declarations: no parse."
+clean (f,b,s,e) = (maybe 1 id $ listToMaybe f, listToMaybe b, s, e)
 
 -- | Convert from an input String to a list of Tokens
 lex :: String -> [Token]
@@ -115,102 +127,109 @@ token = \case
   t           -> maybe (StrLit t) NumLit $ readMaybe t
 
 -- | Convert from a list of tokens to a list of exprs and a symbol table
-yacc :: [Token] -> ([Symbol], [Expr])
-yacc = partitionEithers . unfoldr expr
+yacc :: [Token] -> ([Frames], [Basename], [Symbol], [Expr])
+yacc = partition . unfoldr expr
+
+partition :: [Option] -> ([Integer], [String], [Symbol], [Expr])
+partition = foldr sortOne ([],[],[],[])
+  where sortOne (FramesOption   x) ~(a,b,c,d) = (x:a,b,c,d)
+        sortOne (BasenameOption x) ~(a,b,c,d) = (a,x:b,c,d)
+        sortOne (SymbolOption   x) ~(a,b,c,d) = (a,b,x:c,d)
+        sortOne (ExprOption     x) ~(a,b,c,d) = (a,b,c,x:d)
 
 -- | yacc helper
-expr :: [Token] -> Maybe (Either Symbol Expr, [Token])
+expr :: [Token] -> Maybe (Option, [Token])
 expr = \case
   LineT    : NumLit a : NumLit b : NumLit c
            : NumLit d : NumLit e : NumLit f : rest
-    -> Just (Right $ Line (a,b,c) (d,e,f), rest)
+    -> Just (ExprOption $ Line (a,b,c) (d,e,f), rest)
   CircleT  : NumLit a : NumLit b : NumLit c
            : NumLit d : rest
-    -> Just (Right $ Circle (a,b,c) d, rest)
+    -> Just (ExprOption $ Circle (a,b,c) d, rest)
   HermiteT : NumLit a : NumLit b
            : NumLit c : NumLit d
            : NumLit e : NumLit f
            : NumLit g : NumLit h : rest
-    -> Just (Right $ Hermite (a,b,0) (c,d,0) (e,f,0) (g,h,0), rest)
+    -> Just (ExprOption $ Hermite (a,b,0) (c,d,0) (e,f,0) (g,h,0), rest)
   CBezierT : NumLit a : NumLit b
            : NumLit c : NumLit d
            : NumLit e : NumLit f
            : NumLit g : NumLit h : rest
-    -> Just (Right $ CBezier (a,b,0) (c,d,0) (e,f,0) (g,h,0), rest)
+    -> Just (ExprOption $ CBezier (a,b,0) (c,d,0) (e,f,0) (g,h,0), rest)
   QBezierT : NumLit a : NumLit b
            : NumLit c : NumLit d
            : NumLit e : NumLit f : rest
-    -> Just (Right $ QBezier (a,b,0) (c,d,0) (e,f,0), rest)
+    -> Just (ExprOption $ QBezier (a,b,0) (c,d,0) (e,f,0), rest)
   BoxT     : NumLit a : NumLit b : NumLit c
            : NumLit d : NumLit e : NumLit f : rest
-    -> Just (Right $ Box Nothing (a,b,c) d e f, rest)
+    -> Just (ExprOption $ Box Nothing (a,b,c) d e f, rest)
   BoxT     : StrLit z
            : NumLit a : NumLit b : NumLit c
            : NumLit d : NumLit e : NumLit f : rest
-    -> Just (Right $ Box (Just z) (a,b,c) d e f, rest)
+    -> Just (ExprOption $ Box (Just z) (a,b,c) d e f, rest)
   SphereT  : NumLit a : NumLit b : NumLit c
            : NumLit d : rest
-    -> Just (Right $ Sphere Nothing (a,b,c) d, rest)
+    -> Just (ExprOption $ Sphere Nothing (a,b,c) d, rest)
   SphereT  : StrLit z
            : NumLit a : NumLit b : NumLit c
            : NumLit d : rest
-    -> Just (Right $ Sphere (Just z) (a,b,c) d, rest)
+    -> Just (ExprOption $ Sphere (Just z) (a,b,c) d, rest)
   TorusT   : NumLit a : NumLit b : NumLit c
            : NumLit d : NumLit e : rest
-    -> Just (Right $ Torus Nothing (a,b,c) d e, rest)
+    -> Just (ExprOption $ Torus Nothing (a,b,c) d e, rest)
   TorusT   : StrLit z
            : NumLit a : NumLit b : NumLit c
            : NumLit d : NumLit e : rest
-    -> Just (Right $ Torus (Just z) (a,b,c) d e, rest)
+    -> Just (ExprOption $ Torus (Just z) (a,b,c) d e, rest)
   PushT    : rest
-    -> Just (Right $ Push, rest)
+    -> Just (ExprOption $ Push, rest)
   PopT     : rest
-    -> Just (Right $ Pop, rest)
+    -> Just (ExprOption $ Pop, rest)
   ScaleT   : NumLit a : NumLit b : NumLit c
            : StrLit z : rest
-    -> Just (Right $ Scale (Just z) a b c, rest)
+    -> Just (ExprOption $ Scale (Just z) a b c, rest)
   ScaleT   : NumLit a : NumLit b : NumLit c : rest
-    -> Just (Right $ Scale Nothing a b c, rest)
+    -> Just (ExprOption $ Scale Nothing a b c, rest)
   MoveT    : NumLit a : NumLit b : NumLit c
            : StrLit z : rest
-    -> Just (Right $ Move (Just z) a b c, rest)
+    -> Just (ExprOption $ Move (Just z) a b c, rest)
   MoveT    : NumLit a : NumLit b : NumLit c : rest
-    -> Just (Right $ Move Nothing a b c, rest)
+    -> Just (ExprOption $ Move Nothing a b c, rest)
   RotateT  : StrLit a
            : NumLit b
            : StrLit z : rest
            | isJust $ (readMaybe (map toUpper a) :: Maybe Axis)
-    -> Just (Right $ Rotate (Just z) (read (map toUpper a)) b, rest)
+    -> Just (ExprOption $ Rotate (Just z) (read (map toUpper a)) b, rest)
   RotateT  : StrLit a
            : NumLit b : rest
            | isJust $ (readMaybe (map toUpper a) :: Maybe Axis)
-    -> Just (Right $ Rotate Nothing (read (map toUpper a)) b, rest)
+    -> Just (ExprOption $ Rotate Nothing (read (map toUpper a)) b, rest)
   DisplayT : rest
-    -> Just (Right $ Display, rest)
+    -> Just (ExprOption $ Display, rest)
   SaveT    : StrLit a : rest
-    -> Just (Right $ Save a, rest)
+    -> Just (ExprOption $ Save a, rest)
   ClearT   : rest
-    -> Just (Right $ Clear, rest)
+    -> Just (ExprOption $ Clear, rest)
   ConstT   : StrLit z
            : NumLit kar : NumLit kdr : NumLit ksr
            : NumLit kag : NumLit kdg : NumLit ksg
            : NumLit kab : NumLit kdb : NumLit ksb : rest
-    -> Just (Left $ MaterialVar z (Material (RGB kar kag kab) (RGB kdr kdg kdb) (RGB ksr ksg ksb)), rest)
+    -> Just (SymbolOption $ MaterialVar z (Material (RGB kar kag kab) (RGB kdr kdg kdb) (RGB ksr ksg ksb)), rest)
   AmbientT : NumLit a : NumLit b : NumLit c : rest
-    -> Just (Left $ AmbientVar (Ambient (RGB a b c)), rest)
+    -> Just (SymbolOption $ AmbientVar (Ambient (RGB a b c)), rest)
   LightT   : NumLit r : NumLit g : NumLit b
            : NumLit x : NumLit y : NumLit z : rest
-    -> Just (Left $ LightVar (PointLight (Vec3 x y z) (RGB r g b)), rest)
+    -> Just (SymbolOption $ LightVar (PointLight (Vec3 x y z) (RGB r g b)), rest)
   FramesT  : NumLit a : rest
            | a == fromInteger (round a)
-    -> Just (Left $ FramesVar (round a), rest)
+    -> Just (FramesOption (round a), rest)
   BasenameT : StrLit a : rest
-    -> Just (Left $ BasenameVar a, rest)
+    -> Just (BasenameOption a, rest)
   VaryT    : StrLit a
            : NumLit sFrame : NumLit eFrame
            : NumLit sValue : NumLit eValue : rest
            | sFrame == fromInteger (round sFrame) && eFrame == fromInteger (round eFrame)
-    -> Just (Left $ KnobVar a (Knob (round sFrame) (round eFrame) sValue eValue), rest)
+    -> Just (SymbolOption $ KnobVar a (Knob (round sFrame) (round eFrame) sValue eValue), rest)
   []
     -> Nothing
   x -> error $ "Parsing error at " ++ show (take 5 x)
