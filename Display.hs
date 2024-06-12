@@ -42,6 +42,11 @@ display image = do
   hPutStrLn hin =<< asAscii image
   hClose hin
 
+animate :: String -> FilePath -> IO ()
+animate basename fname = do
+  _ <- P.createProcess_ "fabricater" (P.shell $ "convert img/" ++ basename ++ "_* -delay 2.2 " ++ fname)
+  return ()
+
 -- | Generate the ASCII PPM representation of the image
 asAscii :: Image -> IO String
 asAscii screen = do

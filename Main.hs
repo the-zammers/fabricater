@@ -5,7 +5,7 @@ module Main where
 import Control.Monad (foldM_, when)
 import System.Environment (getArgs)
 import System.IO (hPutStrLn, stderr)
-import Data.Maybe (fromMaybe, listToMaybe, isNothing)
+import Data.Maybe (fromMaybe, listToMaybe, isNothing, isJust, fromJust)
 import Data.Either (partitionEithers)
 
 import Options (parseArgs, Options(..))
@@ -13,7 +13,7 @@ import Parser (parse, Expr(..), Symbol(..), Knob(..))
 import Geometry (Transformation, scaleMatrix, moveMatrix, rotateMatrix, Transformable(..))
 import Stack (peek, pop, push, modHead)
 import Color (Color, readColor, RGB(..))
-import Display (newScreen, clearImage, save, display, asAscii, Image)
+import Display (newScreen, clearImage, save, display, animate, asAscii, Image)
 import Draw (line, circle, hermite, cbezier, qbezier, box, sphere, torus)
 import Lighting (Ambient(..), Material(..), Lights)
 
@@ -31,6 +31,8 @@ main = do
   when (willRun args) $ do
     img <- newScreen 500 500
     mapM_ (run (getDisp args) img (readColor 8 62 100) (readColor 252 252 252) (frames==1) basename syms exprs) [0 .. frames - 1]
+  when (frames/=1 && isJust (getDisp args)) $ animate (maybe "img" id basename) (fromJust $ getDisp args)
+  when (frames/=1 && isNothing (getDisp args)) $ pure () -- display animation
 
 -- | Takes an optional filepath for `display`, an image to draw to, the background and foreground colors, and finally a list of Exprs
 run :: Maybe FilePath -> Image -> Color -> Color -> Bool -> Maybe String -> [Symbol] -> [Expr] -> Integer -> IO ()
