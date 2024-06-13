@@ -26,6 +26,7 @@ executable fabricater
     Display
     Draw
     Geometry
+    Knob
     Lighting
     Matrix
     Options

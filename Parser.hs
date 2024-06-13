@@ -16,6 +16,7 @@ import Geometry (Axis(..), Point)
 import Color (RGB(..))
 import Vector (Vec3(..))
 import Lighting (Material(..), Ambient(..), PointLight(..))
+import Knob (Knob(..), KnobType(..))
 
 data Option
   = FramesOption Frames
@@ -79,9 +80,6 @@ data Expr
   | Display
   | Save String
   | Clear
-  deriving (Eq, Show)
-
-data Knob = Knob Integer Integer Double Double
   deriving (Eq, Show)
 
 -- | Convert from an input String to a list of Exprs
@@ -229,7 +227,17 @@ expr = \case
            : NumLit sFrame : NumLit eFrame
            : NumLit sValue : NumLit eValue : rest
            | sFrame == fromInteger (round sFrame) && eFrame == fromInteger (round eFrame)
-    -> Just (SymbolOption $ KnobVar a (Knob (round sFrame) (round eFrame) sValue eValue), rest)
+    -> Just (SymbolOption $ KnobVar a (Knob Linear (round sFrame) (round eFrame) sValue eValue), rest)
+  VaryT    : StrLit a : StrLit b
+           : NumLit sFrame : NumLit eFrame
+           : NumLit sValue : NumLit eValue : rest
+           | sFrame == fromInteger (round sFrame) && eFrame == fromInteger (round eFrame) && b == "linear"
+    -> Just (SymbolOption $ KnobVar a (Knob Linear (round sFrame) (round eFrame) sValue eValue), rest)
+  VaryT    : StrLit a : StrLit b
+           : NumLit sFrame : NumLit eFrame
+           : NumLit sValue : NumLit eValue : rest
+           | sFrame == fromInteger (round sFrame) && eFrame == fromInteger (round eFrame) && b == "exponential"
+    -> Just (SymbolOption $ KnobVar a (Knob Exponential (round sFrame) (round eFrame) sValue eValue), rest)
   []
     -> Nothing
   x -> error $ "Parsing error at " ++ show (take 5 x)

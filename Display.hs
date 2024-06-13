@@ -6,7 +6,7 @@ import qualified Data.Array.IO as AI
 import qualified Data.Array.MArray as AM
 import qualified System.Process as P
 import System.IO (hPutStrLn, hClose)
-import Control.Monad (when)
+import Control.Monad (when, void)
 import Color (Color, maxValue)
 
 -- | Image type
@@ -42,10 +42,8 @@ display image = do
   hPutStrLn hin =<< asAscii image
   hClose hin
 
-animate :: String -> FilePath -> IO ()
-animate basename fname = do
-  _ <- P.createProcess_ "fabricater" (P.shell $ "convert img/" ++ basename ++ "_* -delay 2.2 " ++ fname)
-  return ()
+animate :: Double -> String -> Maybe FilePath -> IO ()
+animate fps basename fname = void $ P.createProcess_ "fabricater" (P.shell $ maybe "animate" (const "convert") fname ++ " img/" ++ basename ++ "_* -delay " ++ show (100 / fps) ++ maybe "" (' ':) fname)
 
 -- | Generate the ASCII PPM representation of the image
 asAscii :: Image -> IO String
