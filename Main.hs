@@ -15,8 +15,9 @@ import Stack (peek, pop, push, modHead)
 import Color (Color, readColor, RGB(..))
 import Display (newScreen, clearImage, save, display, animate, asAscii, Image)
 import Draw (line, circle, hermite, cbezier, qbezier, box, sphere, torus)
-import Lighting (Ambient(..), Material(..), Lights)
+import Lighting (Ambient(..), Material(..), Lights, PointLight(..))
 import Knob (parseKnob)
+import Vector (Vec3(..))
 
 
 -- | run fabricater
@@ -48,7 +49,7 @@ run dispMode i bgcol fgcol animated basename syms exprs frame = do
   foldM_ eval [] exprs
   when animated $ save asAscii ("img/" ++ fromMaybe "img" basename ++ "_" ++ take (3 - length (show frame)) (repeat '0') ++ show frame) i
   where
-    lights = getLights syms
+    lights = getLights syms frame
     eval :: [Transformation] -> Expr -> IO [Transformation]
     eval xs = \case
       Line p0 p1          -> render Nothing $ line p0 p1 
@@ -75,11 +76,14 @@ run dispMode i bgcol fgcol animated basename syms exprs frame = do
 headDef :: a -> [a] -> a
 headDef def = fromMaybe def . listToMaybe
 
-getLights :: [Symbol] -> Lights
-getLights syms = (ambient, points)
+getLights :: [Symbol] -> Integer -> Lights
+getLights syms frame = (ambient, map (resolvePoints syms frame) points)
   where ambient = headDef basic [x | AmbientVar x <- syms]
         points = [x | LightVar x <- syms]
         basic = Ambient (RGB 0 0 0)
+
+resolvePoints :: [Symbol] -> Integer -> PointLight -> PointLight
+resolvePoints syms frame (PointLight (Vec3 x y z) plcolor (x1,y1,z1)) = PointLight (Vec3 (knob syms frame x1 x) (knob syms frame y1 y) (knob syms frame z1 z)) plcolor (Nothing, Nothing, Nothing)
 
 matlookup :: [Symbol] -> Maybe String -> Material
 matlookup ls = maybe basic $ \key -> headDef basic [x | MaterialVar key' x <- ls, key == key']

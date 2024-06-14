@@ -218,8 +218,13 @@ expr = \case
   AmbientT : NumLit a : NumLit b : NumLit c : rest
     -> Just (SymbolOption $ AmbientVar (Ambient (RGB a b c)), rest)
   LightT   : NumLit r : NumLit g : NumLit b
+           : NumLit x : NumLit y : NumLit z
+           : StrLit x1 : StrLit y1 : StrLit z1 : rest
+    -> Just (SymbolOption $ LightVar (PointLight (Vec3 x y z) (RGB r g b) (guarded (/="_") x1, guarded (/="_") y1, guarded (/="_") z1)), rest)
+    where guarded p a = if p a then Just a else Nothing
+  LightT   : NumLit r : NumLit g : NumLit b
            : NumLit x : NumLit y : NumLit z : rest
-    -> Just (SymbolOption $ LightVar (PointLight (Vec3 x y z) (RGB r g b)), rest)
+    -> Just (SymbolOption $ LightVar (PointLight (Vec3 x y z) (RGB r g b) (Nothing, Nothing, Nothing)), rest)
   FramesT  : NumLit a : rest
            | a == fromInteger (round a)
     -> Just (FramesOption (round a), rest)

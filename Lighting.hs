@@ -10,6 +10,7 @@ data Ambient = Ambient { colA :: RGB Double }
 
 data PointLight = PointLight { loc :: Vec3 Double
                              , col :: RGB Double
+                             , offset :: (Maybe String, Maybe String, Maybe String)
                              }
   deriving (Eq, Show)
 
