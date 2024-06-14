@@ -48,6 +48,7 @@ data Token
   | FramesT
   | BasenameT
   | VaryT
+  | SetT
   | NumLit Double
   | StrLit String
   deriving (Eq, Show)
@@ -122,6 +123,7 @@ token = \case
   "frames"    -> FramesT
   "basename"  -> BasenameT
   "vary"      -> VaryT
+  "set"       -> SetT
   t           -> maybe (StrLit t) NumLit $ readMaybe t
 
 -- | Convert from a list of tokens to a list of exprs and a symbol table
@@ -231,6 +233,11 @@ expr = \case
   VaryT    : StrLit a : StrLit b
            : NumLit sFrame : NumLit eFrame
            : NumLit sValue : NumLit eValue : rest
+           | sFrame == fromInteger (round sFrame) && eFrame == fromInteger (round eFrame) && b == "constant"
+    -> Just (SymbolOption $ KnobVar a (Knob Constant (round sFrame) (round eFrame) sValue eValue), rest)
+  VaryT    : StrLit a : StrLit b
+           : NumLit sFrame : NumLit eFrame
+           : NumLit sValue : NumLit eValue : rest
            | sFrame == fromInteger (round sFrame) && eFrame == fromInteger (round eFrame) && b == "linear"
     -> Just (SymbolOption $ KnobVar a (Knob Linear (round sFrame) (round eFrame) sValue eValue), rest)
   VaryT    : StrLit a : StrLit b
@@ -258,6 +265,8 @@ expr = \case
            : NumLit sValue : NumLit eValue : rest
            | sFrame == fromInteger (round sFrame) && eFrame == fromInteger (round eFrame) && b == "bounce"
     -> Just (SymbolOption $ KnobVar a (Knob (EaseOutBounce damping frequency) (round sFrame) (round eFrame) sValue eValue), rest)
+  SetT     : StrLit a : NumLit b : rest
+    -> Just (SymbolOption $ KnobVar a (Knob Constant 0 0 b b), rest)
   []
     -> Nothing
   x -> error $ "Parsing error at " ++ show (take 5 x)
