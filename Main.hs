@@ -35,16 +35,17 @@ main = do
     ++ map show syms
     ++ ["", "------", ""]
     ++ map show exprs
+  
+  when (not (silent args) && willRun args) $ putStrLn "------"
 
   when (willRun args) $ do
     img <- newScreen 500 500
-    mapM_ (run (getDisp args) img (readColor 8 62 100) (readColor 252 252 252) animated basename syms exprs) [0 .. frames - 1]
+    mapM_ (\f -> putStrLn ("Frame " ++ show f ++ " / " ++ show (frames - 1)) >> run (getDisp args) img (readColor 8 62 100) (readColor 252 252 252) animated basename syms exprs f) [0 .. frames - 1]
     when animated $ animate 30 (fromMaybe "img" basename) (getDisp args)
 
 -- | Takes an optional filepath for `display`, an image to draw to, the background and foreground colors, and finally a list of Exprs
 run :: Maybe FilePath -> Image -> Color -> Color -> Bool -> Maybe String -> [Symbol] -> [Expr] -> Integer -> IO ()
 run dispMode i bgcol fgcol animated basename syms exprs frame = do
-  print $ knob syms frame (Just "knobby") 1
   clearImage i bgcol
   foldM_ eval [] exprs
   when animated $ save asAscii ("img/" ++ fromMaybe "img" basename ++ "_" ++ take (3 - length (show frame)) (repeat '0') ++ show frame) i
