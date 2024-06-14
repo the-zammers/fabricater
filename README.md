@@ -23,7 +23,8 @@ The goals of my final project are:
 - `frames num_frames` declares how many frames to generate all together.
 - `vary knob start_frame end_frame start_val end_val` varies a knob from start_val to end_val over the course of start_frame to end_frame.
 
-*NOTE: DID NOT IMPLEMENT TWEEN, SAVEKNOBS, OR SETKNOBS* -- couldn't find a clean way to modify the knobs while the program was running rather than during the single parsing pass
+> [!NOTE]
+> `tween`, `saveknobs`, and `setknobs` are NOT implemented -- I couldn't find a clean way to modify the knobs while the program was running rather than during the single parsing pass
 
 ### 3. To enhance the power of animation knobs beyond mere linear changes (NOT MDL compliant)
 
@@ -36,11 +37,16 @@ Follow the knobname in `vary` with an optional string declaring the type of chan
 - `elastic` is an elastic function (exponential and sinusoidal) and OVERSHOOTS -- this takes two arguments. The first is dampening (higher values means greater dampening) and the second is frequency (higher values means higher frequency).
 - `bounce` is a bounce function (exponential and sinusoidal) and WILL NEVER GO PAST THE FINAL VALUE -- this takes two arguments. The first is dampening (higher values means greater dampening) and the second is frequency (higher values means higher frequency).
 
-All of these functions are GUARANTEED to start and end at the given values on the given frames, except for the last two, which may be slightly off, depending on the user-provided values.
+> [!NOTE]
+> All of these functions are GUARANTEED to start and end at the given values on the given frames, except for the last two, which may be slightly off, depending on the user-provided values.
+
+*Example:* `vary knobby bounce 4 3 10 19 5 1` will vary the knob "knobby" from frames 10 through 19 from 5 to 1, bouncing slightly towards the end with a dampening of 4 and a frequency of 3 (those number are essentially arbitrary, and aren't measurements of anything).
 
 ### 4. To allow animation knobs to modify lighting colors and pointlight positions (NOT MDL compliant)
 
 - Following the six arguments to the MDL `light` function can one optionally include exactly three knob names overriding the x, y, and z values respectively. Any of these can be replaced with an underscore to do nothing and leave the original values as they were.
+
+*Example:* `light 100 100 100 0 0 1 knobby _ _` creates a new pointlight at position (0,0,1) with the color #646464 in which the x-coordinate will change with the value of "knobby".
 
 ## How to run Fabricater:
 
