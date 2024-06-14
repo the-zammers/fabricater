@@ -236,8 +236,28 @@ expr = \case
   VaryT    : StrLit a : StrLit b
            : NumLit sFrame : NumLit eFrame
            : NumLit sValue : NumLit eValue : rest
-           | sFrame == fromInteger (round sFrame) && eFrame == fromInteger (round eFrame) && b == "exponential"
-    -> Just (SymbolOption $ KnobVar a (Knob Exponential (round sFrame) (round eFrame) sValue eValue), rest)
+           | sFrame == fromInteger (round sFrame) && eFrame == fromInteger (round eFrame) && b == "easein"
+    -> Just (SymbolOption $ KnobVar a (Knob EaseInExp (round sFrame) (round eFrame) sValue eValue), rest)
+  VaryT    : StrLit a : StrLit b
+           : NumLit sFrame : NumLit eFrame
+           : NumLit sValue : NumLit eValue : rest
+           | sFrame == fromInteger (round sFrame) && eFrame == fromInteger (round eFrame) && b == "easeout"
+    -> Just (SymbolOption $ KnobVar a (Knob EaseOutExp (round sFrame) (round eFrame) sValue eValue), rest)
+  VaryT    : StrLit a : StrLit b
+           : NumLit sFrame : NumLit eFrame
+           : NumLit sValue : NumLit eValue : rest
+           | sFrame == fromInteger (round sFrame) && eFrame == fromInteger (round eFrame) && b == "easeinout"
+    -> Just (SymbolOption $ KnobVar a (Knob EaseInOutCubic (round sFrame) (round eFrame) sValue eValue), rest)
+  VaryT    : StrLit a : StrLit b : NumLit damping : NumLit frequency
+           : NumLit sFrame : NumLit eFrame
+           : NumLit sValue : NumLit eValue : rest
+           | sFrame == fromInteger (round sFrame) && eFrame == fromInteger (round eFrame) && b == "elastic"
+    -> Just (SymbolOption $ KnobVar a (Knob (EaseOutElastic damping frequency) (round sFrame) (round eFrame) sValue eValue), rest)
+  VaryT    : StrLit a : StrLit b : NumLit damping : NumLit frequency
+           : NumLit sFrame : NumLit eFrame
+           : NumLit sValue : NumLit eValue : rest
+           | sFrame == fromInteger (round sFrame) && eFrame == fromInteger (round eFrame) && b == "bounce"
+    -> Just (SymbolOption $ KnobVar a (Knob (EaseOutBounce damping frequency) (round sFrame) (round eFrame) sValue eValue), rest)
   []
     -> Nothing
   x -> error $ "Parsing error at " ++ show (take 5 x)
