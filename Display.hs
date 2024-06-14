@@ -45,6 +45,9 @@ display image = do
 animate :: Double -> String -> Maybe FilePath -> IO ()
 animate fps basename fname = void $ P.createProcess_ "fabricater" (P.shell $ maybe "animate" (const "convert") fname ++ " img/" ++ basename ++ "_* -delay " ++ show (100 / fps) ++ maybe "" (' ':) fname)
 
+clearcache :: String -> IO ()
+clearcache basename = void $ P.createProcess_ "fabricater" (P.shell $ "rm img/" ++ basename ++ "_*")
+
 -- | Generate the ASCII PPM representation of the image
 asAscii :: Image -> IO String
 asAscii screen = do

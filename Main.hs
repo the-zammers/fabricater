@@ -7,13 +7,15 @@ import System.Environment (getArgs)
 import System.IO (hPutStrLn, stderr)
 import Data.Maybe (fromMaybe, listToMaybe, isNothing)
 import Data.Either (partitionEithers)
+import Data.List (sortBy)
+import Data.Function (on)
 
 import Options (parseArgs, Options(..))
 import Parser (parse, Expr(..), Symbol(..))
 import Geometry (Transformation, scaleMatrix, moveMatrix, rotateMatrix, Transformable(..))
 import Stack (peek, pop, push, modHead)
 import Color (Color, readColor, RGB(..))
-import Display (newScreen, clearImage, save, display, animate, asAscii, Image)
+import Display (newScreen, clearImage, save, display, animate, clearcache, asAscii, Image)
 import Draw (line, circle, hermite, cbezier, qbezier, box, sphere, torus)
 import Lighting (Ambient(..), Material(..), Lights, PointLight(..))
 import Knob (parseKnob)
@@ -39,13 +41,15 @@ main = do
   when (not (silent args) && willRun args) $ putStrLn "------"
 
   when (willRun args) $ do
+    when animated $ clearcache (fromMaybe "img" basename)
     img <- newScreen 500 500
-    mapM_ (\f -> putStrLn ("Frame " ++ show f ++ " / " ++ show (frames - 1)) >> run (getDisp args) img (readColor 8 62 100) (readColor 252 252 252) animated basename syms exprs f) [0 .. frames - 1]
+    mapM_ (\f -> putStrLn ("Frame " ++ show f ++ " / " ++ show (frames - 1)) >> run (getDisp args) img (readColor 0 0 0) (readColor 252 252 252) animated basename syms exprs f) [0 .. frames - 1]
     when animated $ animate 30 (fromMaybe "img" basename) (getDisp args)
 
 -- | Takes an optional filepath for `display`, an image to draw to, the background and foreground colors, and finally a list of Exprs
 run :: Maybe FilePath -> Image -> Color -> Color -> Bool -> Maybe String -> [Symbol] -> [Expr] -> Integer -> IO ()
 run dispMode i bgcol fgcol animated basename syms exprs frame = do
+  --print $ knob syms frame (Just "knobbx") 90
   clearImage i bgcol
   foldM_ eval [] exprs
   when animated $ save asAscii ("img/" ++ fromMaybe "img" basename ++ "_" ++ take (3 - length (show frame)) (repeat '0') ++ show frame) i
@@ -92,7 +96,7 @@ matlookup ls = maybe basic $ \key -> headDef basic [x | MaterialVar key' x <- ls
 
 knob :: [Symbol] -> Integer -> Maybe String -> Double -> Double
 knob _ _ Nothing total = total
-knob syms frame (Just key) total = myFirst $ map (($ frame) . parseKnob) defs
+knob syms frame (Just key) total = (total*) $ myFirst $ map (($ frame) . parseKnob) defs
   where
     defs = [x | KnobVar key' x <- syms, key == key']
-    myFirst ls = headDef total $ uncurry (flip (++)) $ partitionEithers ls
+    myFirst list = headDef total $ (\(ls, rs) -> rs ++ (reverse $ map snd $ sortBy (compare `on` fst) ls)) $ partitionEithers list
