@@ -43,7 +43,7 @@ display image = do
   hClose hin
 
 animate :: Double -> String -> Maybe FilePath -> IO ()
-animate fps basename fname = void $ P.createProcess_ "fabricater" (P.shell $ maybe "animate" (const "convert") fname ++ " img/" ++ basename ++ "_* -delay " ++ show (100 / fps) ++ maybe "" (' ':) fname)
+animate fps basename fname = void $ P.createProcess_ "fabricater" (P.shell $ maybe "animate" (const "convert") fname ++ " -delay " ++ show (100 / fps) ++ " img/" ++ basename ++ "_* " ++ maybe "" (' ':) fname)
 
 clearcache :: String -> IO ()
 clearcache basename = void $ P.createProcess_ "fabricater" (P.shell $ "rm img/" ++ basename ++ "_*")
