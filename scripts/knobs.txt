@@ -8,6 +8,6 @@ frames 20
 basename knobtest
 vary knobby elastic 5 7 0 9 1 5
 vary knobby bounce 4 3 10 19 5 1
-scale 1 1 1
+scale 1 1 1 knobby
 torus gold 0 0 0 10 20
 display
