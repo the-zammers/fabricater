@@ -19,9 +19,9 @@
 # which complete in a mere .65 seconds combined.
 
 BEGIN {
-  WIDTH = 599
-  HEIGHT = 597
-  OBJECTS = 2006
+  WIDTH = 532
+  HEIGHT = 532
+  OBJECTS = 501
   print "move 250 250 250"
   print "scale " 500 / WIDTH " " 500 / HEIGHT " " 1
   print "ambient 20 20 20"

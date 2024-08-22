@@ -4,6 +4,8 @@
 // killer electric guitar. The vocals are really relaxing, too,
 // even if you don't know any of the words.
 
+ambient 100 120 150
+light 241 241 241 -0.5 1 1
 move 250 250 0
 scale 5 5 5
 

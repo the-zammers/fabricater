@@ -1,22 +1,31 @@
+// setup
 constants shiny_purple 0.3 0.2 0.8 0.3 0 0 0.3 0.2 0.8
 constants shiny_teal 0.3 0.0 0.0 0.3 0.2 0.8 0.3 0.2 0.8
 constants dull_yellow 0.3 0.8 0.2 0.3 0.8 0.2 0 0 0
 ambient 20 20 20
 light 241 241 241 -0.5 1 1
 light 0 90 90 1 0 0
+
+// draw eyes
 push
 move 250 250 0
 sphere shiny_purple -100 150 0 80
 sphere shiny_teal 100 150 0 80
+
+// draw nose
 push
 rotate x 45
 rotate y 45
 box -40 40 40 80 80 80
 pop
+
+// draw smile
 push
 move 0 -150 0
 rotate x 30
 scale 1 1 0.5
 torus dull_yellow 0 0 0 30 175
+
+// display
 display
 save face.png
