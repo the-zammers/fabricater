@@ -3,6 +3,8 @@ Designed and written by Z Cater
 
 ## Overview
 
+![A sample animation generated. the-zammers' profile picture, a painting by Richard Parkes Bonington, disintegrates into individual cubes, rotates, and reassembles at a ninety-degree angle on loop.](docs/sample.gif)
+
 These are the docs for *Fabricater*, a command-line image and animation compiler written in Haskell.
 
 Fabricater is run on scripts formatted following [this spec based on our class'](MDL.spec), which specifies the proper usage and purpose of each command. It produces image files or runs ImageMagick to display them directly.
