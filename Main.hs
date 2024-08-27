@@ -43,7 +43,8 @@ main = do
   when (willRun args) $ do
     when animated $ clearcache (fromMaybe "img" basename)
     img <- newScreen 500 500
-    mapM_ (\f -> putStrLn (show (100 * f `div` (frames + 1)) ++ "% done") >> run (getDisp args) img (readColor 0 0 0) (readColor 252 252 252) animated basename syms exprs f) [0 .. frames - 1]
+    mapM_ (\f -> putStrLn ("\x1b[K" ++ show (100 * f `div` (frames + 1)) ++ "% done\x1b[F") >> run (getDisp args) img (readColor 0 0 0) (readColor 252 252 252) animated basename syms exprs f) [0 .. frames - 1]
+    putStrLn "\x1b[K100% done"
     when animated $ animate 10 (fromMaybe "img" basename) (getDisp args)
 
 -- | Takes an optional filepath for `display`, an image to draw to, the background and foreground colors, and finally a list of Exprs
